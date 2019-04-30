@@ -1,1 +1,86 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use FindBin;
+use Getopt::Long;
+
+use lib "$FindBin::RealBin/../lib";
+
+#--------------------------------------------------------------------------------
+#----------------------------------- MAIN ---------------------------------------
+#--------------------------------------------------------------------------------
+
+my $usage = "
+
+Description:
+
+cercocarpus - tools for hacking text data
+
+Commands:
+
+    help              Show this message and exit.
+
+    view              View data.
+
+";
+
+
+# Dispatch command
+#--------------------------------------------------------------------------------
+
+my $command = shift @ARGV || '';
+
+if (! $command) {
+    die "$usage\n\nFATAL : missing_command : You must provide a command to cercocarpus\n";
+}
+elsif ($command eq 'view') {
+    command_view();
+}
+else {
+    die "$usage\n\nFATAL : unknown_command : $command\n";
+}
+
+#--------------------------------------------------------------------------------
+#------------------------------------ VIEW ------------------------------------
+#--------------------------------------------------------------------------------
+
+sub command_transpose {
+
+      my $usage = "
+
+Synopsis:
+
+  cercocarpus transpose data.tsv
+
+Description:
+
+  Transpose delimited text data.
+
+Options:
+
+";
+
+      my ($help);
+      my %opt = (help        => \$help,
+	  );
+
+      my $opt_success = GetOptions(\%opt,
+				   'help|h',
+				   'select|s=s',
+				   'from|f=s',
+				   'where|w=s',
+				   'where_value|v=s',
+	  );
+
+      if ($help) {
+	  print $usage;
+	  exit(0);
+      }
+
+      die $usage if ! $opt_success;
+
+}
+
+#--------------------------------------------------------------------------------
 
