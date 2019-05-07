@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Page Title</title>
+<script src="tablefilter/tablefilter.js"></script>
+</head>
+<body>
+
+<table class="filter_table" style="width:90%">
+  <tr>
+    <th>name</th>
+    <th>sex</th>
+    <th>hobby</th>
+  </tr>
+  <tr>
+    <td>Fred</td>
+    <td>male</td>
+    <td>busting rocks</td>
+  </tr>
+  <tr>
+    <td>Wilma</td>
+    <td>female</td>
+    <td>living the cartoon dream</td>
+  </tr>
+  <tr>
+    <td>Pebbles</td>
+    <td>female</td>
+    <td>collecting rocks</td>
+  </tr>
+</table>
+<script>
+var tf = new TableFilter(document.querySelector('.filter_table'), {
+});
+tf.init();
+</script>
+
+</body>
+</html>

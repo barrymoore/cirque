@@ -1,0 +1,4 @@
+#name	age	dob	sex	hobby
+Fred	34	5/28/66	male	busting rocks
+Wilma	33	7/3/67	female	living the cartoon dream
+Pebbles	4	5/22/96	female	collecting rocks
