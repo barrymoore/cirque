@@ -2,10 +2,11 @@ package Cirque::TableFilter;
 
 use strict;
 use warnings;
+
+use base qw(Cirque::Base);
 use Cirque::Utils qw(:all);
 
 use vars qw($VERSION);
-use Carp qw(croak cluck);
 
 $VERSION = 0.0.1;
 
@@ -87,7 +88,6 @@ Args    :
 sub new {
   my ($class, @args) = @_;
   my $self = $class->SUPER::new(@args);
-  $self->_process_header;
   return $self;
 }
 
@@ -98,6 +98,22 @@ sub new {
 =head1 Private Functions
 
 =cut
+
+sub _initialize_args {
+  my ($self, @args) = @_;
+
+  ######################################################################
+  # This block of code handels class attributes.  Use the
+  # @valid_attributes below to define the valid attributes for
+  # this class.  You must have identically named get/set methods
+  # for each attribute.  Leave the rest of this block alone!
+  ######################################################################
+  my $args = $self->SUPER::_initialize_args(@args);
+  # Set valid class attributes here
+  my @valid_attributes = qw(data columns full_page alternate_rows);
+  $self->set_attributes($args, @valid_attributes);
+  ######################################################################
+}
 
 # =head2 _private_function
 #
@@ -124,6 +140,40 @@ sub new {
 #-----------------------------------------------------------------------------
 
 =head1 Attributes
+
+=head2 data
+
+ Title   : data
+ Usage   : $data = $self->data([['Fred', 'male', '32'],['Wilma', 'female', 27]]);
+
+ Function: Get/set the data for the table.  Data is in the form of a datastructure.  See Args below
+ Returns : The data structure for the table data - see format in Args below.
+ Args    : A data structure for the table data.
+	   An arrayref (one element for each row) of arrayrefs (one element for each column) or a
+	   hashrefs (one key/value pair for each column).  For example:
+	   my $array_data = [[1,2,3],[4,5,6]];
+	   my $hash_data  = [{col1 => 1, col2 => 2, col3 => 3},
+			     {col1 => 4, col2 => 5, col3 => 6}];
+
+=cut
+
+sub data {
+  my ($self, $data) = @_;
+
+  if ($data) {
+
+    # Validate data value
+    throw_msg('array_reference_required', 'Argument to Cirque::' .
+	      'TableFilter::data must be a reference to an array')
+      unless ref $data eq 'ARRAY';
+
+    $self->{data} = $data;
+  }
+
+  return wantarray ? @{$self->{data}} : $self->{data};
+}
+
+#-----------------------------------------------------------------------------
 
 =head2 columns
 
@@ -155,6 +205,30 @@ sub columns {
 
 #-----------------------------------------------------------------------------
 
+=head2 full_page
+
+ Title   : full_page
+ Usage   : $full_page = $self->full_page(1);
+ Function: Get/set the full_page attribute
+ Returns : 0 or 1 (0=turn off, 1=turn on TableFilter alternate rows)
+ Args    : 0 or 1
+
+=cut
+
+sub full_page {
+  my ($self, $full_page) = @_;
+
+  if ($full_page) {
+    $self->{full_page} = $full_page;
+  }
+
+  $self->{full_page} ||= 0;
+
+  return wantarray ? @{$self->{full_page}} : $self->{columns};
+}
+
+#-----------------------------------------------------------------------------
+
 =head2 alternate_rows
 
  Title   : alternate_rows
@@ -172,7 +246,9 @@ sub alternate_rows {
     $self->{alternate_rows} = $alternate_rows;
   }
 
-  return wantarray ? @{$self->{alternate_rows}} : $self->{columns};
+  $self->{alternate_rows} ||= 0;
+
+  return wantarray ? @{$self->{alternate_rows}} : $self->{alternate_rows};
 }
 
 #-----------------------------------------------------------------------------
@@ -351,11 +427,11 @@ sub tsv_table {
 
 #-----------------------------------------------------------------------------
 
-=head2 html_table
+=head2 build_table
 
- Title   : html_table
- Usage   : html_table($list_of_array_refs, $columns, $args);
-	   html_table($list_of_hash_refs, $columns, $args);
+ Title   : build_table
+ Usage   : build_table($list_of_array_refs, $columns, $args);
+	   build_table($list_of_hash_refs, $columns, $args);
  Function: Print an HTML table from an array or hash.
  Returns : N/A
 
@@ -370,12 +446,14 @@ sub tsv_table {
 
 =cut
 
-sub html_table {
+sub build_table {
 
-  my ($data, $columns, $args) = @_;
+  my $self = shift @_;
 
   my $table_text;
-  if (exists $args->{full_page} && $args->{full_page} > 0) {
+
+  # HTML page header
+  if ($self->full_page) {
     #$table_text = html_page_header();
     $table_text = join "\n", ('<!DOCTYPE html>',
 			      '<html>',
@@ -388,33 +466,58 @@ sub html_table {
     $table_text .= "\n\n";
   }
 
-  # Print table
+  # Start table
   $table_text .= '<table class="filter_table" style="width:100%">';
   $table_text .= "\n";
 
-  # Print header row
+  # Add header row
   $table_text .= "  <tr>\n";
-  for my $column_head (@{$columns}) {
+  for my $column_head ($self->columns) {
     $table_text .= "    <th>$column_head</th>\n";
   }
   $table_text .= "  </tr>\n";
 
-  # Print each data row
-  for my $row (@{$data}) {
+  # Add each data row
+  for my $row ($self->data) {
     $table_text .= "  <tr>\n";
 
     #Prep column data
     my @column_data;
-    if (ref $data eq 'HASH') {
-      @column_data = @{$row}{@{$columns}};
+    if (ref $row eq 'HASH') {
+      @column_data = @{$row}{$self->columns};
     }
-    elsif (ref $data eq 'ARRAY') {
+    elsif (ref $row eq 'ARRAY') {
       @column_data = @{$row};
     }
 
-    # Print each column
-    for my $column (@column_data) {
-      $table_text .= "    <td>$column</td>\n";
+    # Add each column
+    for my $cell_data (@column_data) {
+
+      # Prep cell data
+      my ($cell_text, $cell_format);
+      if (ref $cell_data eq 'ARRAY') {
+	($cell_text, $cell_format) = @{$cell_data};
+      }
+      else {
+	$cell_text = $cell_data;
+      }
+
+      # Prep cell format
+      my $td_tag;
+      if ($cell_format) {
+	$td_tag = '<td ';
+	my @cell_attrbs;
+	for my $attrb (keys %{$cell_format}) {
+	  my $attrb_value = $cell_format->{$attrb};
+	  push @cell_attrbs, "${attrb}=\"$attrb_value\"";
+	}
+	$td_tag .= join ' ', @cell_attrbs;
+	$td_tag .= '>';
+      }
+      else {
+	$td_tag = '<td>';
+      }
+      $table_text .= "    ${td_tag}${cell_text}</td>\n";
     }
     $table_text .= "  </tr>\n"
   }
@@ -428,9 +531,9 @@ sub html_table {
 			     '});',
 			     'tf.init();',
 			     '</script>'
-			     );
+			    );
 
-  if (exists $args->{full_page} && $args->{full_page} > 0) {
+  if ($self->full_page) {
     # $table_text .= html_page_footer();
     $table_text .= "\n\n";
     $table_text .= join "\n", ('</body>',

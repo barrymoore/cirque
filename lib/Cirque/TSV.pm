@@ -1,11 +1,12 @@
 package Cirque::TSV;
 
+use base qw(Cirque::Base);
+
 use strict;
 use warnings;
 use vars qw($VERSION);
 
 $VERSION = 0.0.1;
-use base qw(Cirque::Base);
 
 =head1 NAME
 
