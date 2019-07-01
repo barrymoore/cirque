@@ -59,7 +59,7 @@ appropriate attributes:
 
 =over
 
-=item * C<< file => tsv_header.txt >>
+=item * C<< file => tsv.txt >>
 
 This optional parameter provides the filename for the file containing
 the data to be parsed. While this parameter is optional either it, or
@@ -143,12 +143,16 @@ sub _process_header {
     }
     elsif ($line =~ /$header_regexp/) {
       push @{$self->{header}}, $line;
-      $line =~ s/${$self->header_regexp}//;
+      $line =~ s/$self->{header_regexp}//;
       chomp $line;
       my @cols = split /$delimiter/, $line;
       $self->columns(\@cols);
       undef($line);
       last LINE;
+    }
+    else {
+	$self->_push_stack($line);
+	last LINE;
     }
   }
 }
@@ -174,6 +178,8 @@ sub columns {
     $self->{columns} = $columns;
   }
 
+  $self->{columns} ||= [];
+  
   return wantarray ? @{$self->{columns}} : $self->{columns};
 }
 

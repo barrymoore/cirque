@@ -15,13 +15,18 @@ my $usage = "
 
 Description:
 
-cercocarpus - tools for hacking text data
+cirque - tools for hacking text data
 
 Commands:
 
-    help              Show this message and exit.
+    help       Show this message and exit.
 
-    view              View data.
+    extract    Extract rows from text files based on criteria.
+
+    transpose  Transpose (rotate) delimited text data from columns to
+               rows.
+
+    view       View data.
 
 ";
 
@@ -32,7 +37,13 @@ Commands:
 my $command = shift @ARGV || '';
 
 if (! $command) {
-    die "$usage\n\nFATAL : missing_command : You must provide a command to cercocarpus\n";
+    die "$usage\n\nFATAL : missing_command : You must provide a command to cirque\n";
+}
+elsif ($command eq 'extract') {
+    command_extract();
+}
+elsif ($command eq 'transpose') {
+    command_transpose();
 }
 elsif ($command eq 'view') {
     command_view();
@@ -45,17 +56,121 @@ else {
 #------------------------------------ VIEW ------------------------------------
 #--------------------------------------------------------------------------------
 
-sub command_transpose {
+sub command_extract {
 
-      my $usage = "
+    my $file = shift @_;
+    
+    my $usage = "
 
 Synopsis:
 
-  cercocarpus transpose data.tsv
+  cirque extract --ids ids.txt --cols 3 data.tsv
+
+Description:
+
+  Extract rows from delimited text file.
+
+Options:
+
+  --ids, -i
+
+    A list of IDs.  Argument to this option can be provided as comma
+    separated list of IDs or a text file that contains one ID per row.
+
+  --col, -c
+
+    Column in the target file that match the IDs in the ID file.  This
+    can be either a 0-based integer index in the the record list, or
+    if the data has a header row that provide column names or was
+    created with a columns argument, then a column name can be given.
+
+";
+
+    my ($help, $ids, $col);
+    my %opt = (help => \$help,
+	);
+    
+    my $opt_success = GetOptions(\%opt,
+				 'ids|i=s',
+				 'col|c=s',
+	);
+    
+    die $usage if ! $opt_success;
+    
+    if ($help) {
+	print $usage;
+	exit(0);
+    }
+    
+    my $map = Cirque::TXT->new(file => $ids);
+    $map->hash_map(key => 0);
+
+    my $data = Cirque::TSV->new(file => $file);
+
+  RECORD:
+    while (my $record = $data->next_record) {
+	next RECORD unless $map->exists($record->{$col});
+	my @columns = (ref $record eq 'HASH' ?
+		       @{$record}{@cols}     :
+		       @{$record});
+
+	print join "\t", @columns;
+	print "\n";
+    }
+}
+
+#--------------------------------------------------------------------------------
+
+sub command_transpose {
+
+    my $file = shift @_;
+    
+    my $usage = "
+
+Synopsis:
+
+  cirque transpose data.tsv
 
 Description:
 
   Transpose delimited text data.
+
+Options:
+
+";
+
+    my ($help);
+    my %opt = (help        => \$help,
+	);
+    
+    my $opt_success = GetOptions(\%opt,
+				 'help|h',
+	);
+    
+    if ($help) {
+	print $usage;
+	exit(0);
+    }
+    
+    die $usage if ! $opt_success;
+    
+}
+
+#--------------------------------------------------------------------------------
+
+sub command_view {
+
+    my $file = shift @_;
+    
+    my $usage = "
+
+Synopsis:
+
+  cirque view data.tsv
+
+Description:
+
+  View delimited text data.
 
 Options:
 
@@ -67,10 +182,6 @@ Options:
 
       my $opt_success = GetOptions(\%opt,
 				   'help|h',
-				   'select|s=s',
-				   'from|f=s',
-				   'where|w=s',
-				   'where_value|v=s',
 	  );
 
       if ($help) {
@@ -80,6 +191,21 @@ Options:
 
       die $usage if ! $opt_success;
 
+      my $cirque = Cirque::TSV->new(file => $file);
+
+      if ($cirque->headers) {
+	  print $cirque->headers;
+	  print "\n";
+      }
+
+      my @cols = ($cirque->columns || ()) if $cirque->columns;
+      
+      while (my $record = $cirque->next_record) {
+	  
+	  print join "\t", (ref $record eq 'HASH' ?
+			    @{$record}{@cols}     :
+			    @{$record});
+      }
 }
 
 #--------------------------------------------------------------------------------
