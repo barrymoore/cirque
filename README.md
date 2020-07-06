@@ -1,3 +1,3 @@
 # cirque
 
-Tools for hacking on text data
+Tools for hacking text data
