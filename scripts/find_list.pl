@@ -10,7 +10,7 @@ my $usage = "
 
 Synopsis:
 
-find_list.pl -f1 4 -f2 1 data.txt list.txt 
+find_list.pl -f1 4 -f2 1 data.txt list.txt
 
 Description:
 
@@ -24,13 +24,13 @@ Options:
 
   -f1 [1]
 
-   The column number (1-based numbering) from the first file that
-   contains the text to match on.
+   The column number (1-based numbering) from the first (data) file
+   that contains the text to match on.
 
   -f2 [1]
 
-   The column number (1-based numbering) from the second file that
-   contains the text to match on.
+   The column number (1-based numbering) from the second (list) file
+   that contains the text to match on.
 
   --header, -d
 
@@ -63,7 +63,7 @@ my $opt_success = GetOptions('help'               => \$help,
                              'header|d'           => \$header,
                              'header_count|c=s'   => \$header_count,
                              'header_pattern|p=s' => \$header_pattern,
-			      );
+                              );
 
 $f1 ||= 1;
 $f1--;
@@ -115,4 +115,3 @@ while (my $line = <$DATA>) {
 }
 
 close $DATA;
-
