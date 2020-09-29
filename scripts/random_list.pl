@@ -37,6 +37,16 @@ Options:
     that given number of values from the top of the shuffled list.
     Default is to print the entire shuffled list.
 
+  --uniq, -u
+
+    When used with --pick, the --uniq option ensures that the set of
+    picked values is unique.  If the list being picked from is not
+    unique then --pick may pick the same value multiple times (from
+    different rows of the input) - this option ensures that doesn't
+    happen.  With the uniq option, the samples are picked one at a
+    time until the count of --pick have been chosen, so you still get
+    a weighted pick if for duplicate rowes.
+
   --prob_emit, -e 1e-3
 
     Emit lines with the given probability.  For example if you supply
@@ -46,10 +56,11 @@ Options:
 
 ";
 
-my ($help, $permute, $pick, $prob_emit);
+my ($help, $permute, $pick, $uniq, $prob_emit);
 my $opt_success = GetOptions('help'          => \$help,
 			     'permute=i'     => \$permute,
 			     'pick=i'        => \$pick,
+			     'uniq|u'        => \$uniq,
 			     'prob_emit|e=s' => \$prob_emit,
 			      );
 
@@ -69,10 +80,10 @@ else {
 }
 
 if ($prob_emit) {
-    print_prob_emit($IN, $prob_emit);
+    print_prob_emit($IN, $uniq, $prob_emit);
 }
 else {
-    shuffle($IN, $permute, $pick)
+    shuffle($IN, $permute, $uniq, $pick)
 }
 
 exit(0);
@@ -83,39 +94,68 @@ exit(0);
 
 sub shuffle {
 
-    my ($IN, $permute, $pick) = @_;
+    my ($IN, $permute, $uniq, $pick) = @_;
 
     my @list = <$IN>;
     chomp @list;
-
     $pick ||= scalar @list;
-    $pick = $pick > scalar @list ? scalar @list : $pick;
     
     for (1 .. $permute) {
 	#Fisher-Yates Shuffle
 	my $n = scalar @list;
 	while ($n > 1) {
-	    
+
 	    my $k = int rand($n--);
 	    ($list[$n], $list[$k]) = ($list[$k], $list[$n]);
 	}
-	
-	print join "\n", @list[0 .. $pick - 1];
-	print "\n";
     }
+
+    # Control size of pick
+    my $list_size = scalar @list;
+    if ($pick > $list_size) {
+	warn "WARN : reducing_size_of_pick : PICK=$pick, LIST=$list_size\n";
+	$pick = scalar @list;
+    }
+
+    # Unique List
+    @list = uniq_list(@list) if $uniq;
+    $list_size = scalar @list;
+
+    # Control size of pick after uniq
+    if ($pick > scalar @list) {
+	warn "WARN : reducing_size_of_pick_after_uniq : PICK=$pick, LIST=$list_size\n";
+	$pick = scalar @list;
+    }
+
+    print join "\n", @list[0 .. $pick - 1];
+    print "\n";
+}
+
+#-----------------------------------------------------------------------------
+
+sub uniq_list {
+
+    my %hash;
+    map {$hash{$_}++} @_;
+    my @uniq = keys %hash;
+    return wantarray ? @uniq : \@uniq;
 }
 
 #-----------------------------------------------------------------------------
 
 sub print_prob_emit {
 
-    my ($IN, $prob_emit) = @_;
+    my ($IN, $uniq, $prob_emit) = @_;
 
-    $prob_emit =1 if $prob_emit > 1;
+    $prob_emit = 1 if $prob_emit > 1;
     my $rand_max = int(1/$prob_emit);
 
-    while (<$IN>) {
-	print if int(rand($rand_max)) == ($rand_max - 1);
+    my %uniq;
+    while (my $value = <$IN>) {
+	next unless int(rand($rand_max)) == ($rand_max - 1);
+	print $value unless ($uniq && exists $uniq{$value});
+	$uniq{$value}++;
+	print '';
     }
 }
 
