@@ -11,9 +11,8 @@ my $usage = "
 Synopsis:
 
 random_list file.txt
-cat file.txt | random_list
-random_list --permute 1000 --pick 11 file.txt | histogram
-
+cat file.txt | random_list -
+random_list --permute 1000 --pick 11 file.txt
 
 Description:
 
@@ -21,7 +20,8 @@ This script will take a text file as input and print out the file in
 random order.  It uses the Fisher-Yates Shuffle to randomize the list.
 With the options described below you can pick a given number of values
 from the list and print just those, and you can permute the shuffle
-pick sequence a given number of times.
+pick sequence a given number of times.  Passing a file '-' causes the
+script to read input from STDIN.
 
 Options:
 
@@ -67,16 +67,16 @@ my $opt_success = GetOptions('help'          => \$help,
 die $usage if $help || ! $opt_success;
 
 my $file = shift;
-die $usage unless $file || ! -t;
+die "$usage\n\nFATAL : missing_required_file\n" unless $file;
 
 $permute ||= 1;
 
 my $IN;
-if (! -t STDIN) {
-	open ($IN, "<&=STDIN") or die "Can't open STDIN\n";
+if ($file eq '-') {
+    open ($IN, "<&=STDIN") or die "Can't open STDIN for reading:\n$!\n";
 }
 else {
-	open ($IN, '<', $file) or die "Can't open $file for reading:\n$!\n";
+    open ($IN, '<', $file) or die "Can't open $file for reading:\n$!\n";
 }
 
 if ($prob_emit) {
