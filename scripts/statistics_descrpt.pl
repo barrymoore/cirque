@@ -13,7 +13,7 @@ use Statistics::Descriptive;
 my $usage = "
 
 This script will take one or more datafiles (use - as the file name for input
-from STDIN) and output a list of descriptive statistics about a give column of 
+from STDIN) and output a list of descriptive statistics about a give column of
 data.  The options described below allow some control of the input and output.
 
 statistics_descrpt [options] datafile1 [datafile2 datafile3...]
@@ -37,17 +37,29 @@ Options:
 
       Skip n lines at the end of the input.
 
+    --fields min,mean,max,stnd_dev
+
+      A comma-separated list of fields to print as a tab-delimited
+      list. Valid fields are: mean, trm_mean, min, q1, median, q3,
+      max, iqr, mode, std_dev, variance count, sum
+
+
+
 ";
 
-my ($col, $find, $header, $footer);
+my ($col, $find, $header, $footer, $field_txt);
 
 my $opt_results = GetOptions('col=i'    => \$col,
-			     'find=s'   => \$find,
-			     'header=i' => \$header,
-			     'footer=i' => \$footer,
-			     );
+                             'find=s'   => \$find,
+                             'header=i' => \$header,
+                             'footer=i' => \$footer,
+                             'fields=s' => \$field_txt,
+                             );
 
 $col--;
+$field_txt ||= '';
+my @fields = split /,/, $field_txt;
+
 my @files = @ARGV;
 push @files, '-' if (@files < 1 && ! $find);
 my @find_files = `find ./ -name $find` if $find;
@@ -59,7 +71,12 @@ die $usage unless $opt_results && @files;
 
 my $data = parse_data(@files);
 my $stats = get_stats($data, @files);
-print_stats($stats);
+if (@fields) {
+        print_some_stats($stats, \@fields);
+}
+else {
+        print_stats($stats);
+}
 
 exit(0);
 
@@ -69,84 +86,100 @@ exit(0);
 sub parse_data {
     my @files = @_;
     my %data;
-    
+
     my $file_order = 0;
     my $line_count;
     for my $file (sort @files) {
-	my $IN;
-	if (! -t STDIN) { 
-	    open ($IN, "<&=STDIN") or die "Can't open STDIN\n";
-	}
-	else {
-	    open ($IN, $file) or die "Can't open $file for reading: $!\n";
-	    $data{$file}{order} = $file_order++;
-	}
-	while (<$IN>) {
-	    $line_count++;
-	    next if $header && $line_count <= $header;
-	    my @line_data = split;
-	    my $datum;
-	    if ($col) {
-		$datum = $line_data[$col];
-	    }
-	    else {
-		$datum = pop @line_data;
-	    }
-	    next unless $datum =~ /-?\d*\.?\d+/;
-	    push @{$data{$file}{data}}, $datum;
-	}
-	if ($footer) {
-	    splice (@{$data{$file}{data}}, $footer * -1, $footer);
-	}
+        my $IN;
+        if (! -t STDIN) {
+            open ($IN, "<&=STDIN") or die "Can't open STDIN\n";
+        }
+        else {
+            open ($IN, $file) or die "Can't open $file for reading: $!\n";
+            $data{$file}{order} = $file_order++;
+        }
+        while (<$IN>) {
+            $line_count++;
+            next if $header && $line_count <= $header;
+            my @line_data = split;
+            my $datum;
+            if ($col) {
+                $datum = $line_data[$col];
+            }
+            else {
+                $datum = pop @line_data;
+            }
+            next unless $datum =~ /-?\d*\.?\d+/;
+            push @{$data{$file}{data}}, $datum;
+        }
+        if ($footer) {
+            splice (@{$data{$file}{data}}, $footer * -1, $footer);
+        }
     }
     return \%data;
 }
 #-----------------------------------------------------------------------------
 sub get_stats {
-	my ($data, @files) = @_;
+        my ($data, @files) = @_;
 
-	my %stat_hash;
-	for my $file (keys %$data) {
-		my $stat = Statistics::Descriptive::Full->new();
-		$stat->add_data(@{$$data{$file}{data}}); 
-		$stat_hash{$file}{order}      = $$data{$file}{order};
-		$stat_hash{$file}{mean}       = $stat->mean();
-		$stat_hash{$file}{trm_mean}   = $stat->trimmed_mean(0.1, 0.1);
-		$stat_hash{$file}{min}        = $stat->min();
-		$stat_hash{$file}{q1}         = $stat->quantile(1);
-		$stat_hash{$file}{median}     = $stat->median();
-		$stat_hash{$file}{q3}         = $stat->quantile(3);
-		$stat_hash{$file}{max}        = $stat->max();
-		$stat_hash{$file}{iqr}        = ($stat_hash{$file}{q3} -
-						 $stat_hash{$file}{q1});
-		$stat_hash{$file}{mode}       = $stat->mode();
-		$stat_hash{$file}{variance}   = $stat->variance();
-		$stat_hash{$file}{std_dev}    = $stat->standard_deviation();
-		$stat_hash{$file}{count}      = $stat->count();
-		$stat_hash{$file}{sum}        = $stat->sum();
-	}
-	return \%stat_hash;
+        my %stat_hash;
+        for my $file (keys %$data) {
+                my $stat = Statistics::Descriptive::Full->new();
+                $stat->add_data(@{$$data{$file}{data}});
+                $stat_hash{$file}{order}      = $$data{$file}{order};
+                $stat_hash{$file}{mean}       = $stat->mean();
+                $stat_hash{$file}{trm_mean}   = $stat->trimmed_mean(0.1, 0.1);
+                $stat_hash{$file}{min}        = $stat->min();
+                $stat_hash{$file}{q1}         = $stat->quantile(1);
+                $stat_hash{$file}{median}     = $stat->median();
+                $stat_hash{$file}{q3}         = $stat->quantile(3);
+                $stat_hash{$file}{max}        = $stat->max();
+                $stat_hash{$file}{iqr}        = ($stat_hash{$file}{q3} -
+                                                 $stat_hash{$file}{q1});
+                $stat_hash{$file}{mode}       = $stat->mode();
+                $stat_hash{$file}{variance}   = $stat->variance();
+                $stat_hash{$file}{std_dev}    = $stat->standard_deviation();
+                $stat_hash{$file}{count}      = $stat->count();
+                $stat_hash{$file}{sum}        = $stat->sum();
+        }
+        return \%stat_hash;
 }
 #-----------------------------------------------------------------------------
 sub print_stats {
-	my $stats = shift;
+        my $stats = shift;
 
-	print "Stats\t";
-	print join ("\t", sort {$$stats{$a}{order} <=> $$stats{$b}{order}} 
-		    keys %$stats);
-	print "\n";
+        print "Stats\t";
+        print join ("\t", sort {$$stats{$a}{order} <=> $$stats{$b}{order}}
+                    keys %$stats);
+        print "\n";
 
-	my @stat_types = qw(mean trm_mean min q1 median q3 max iqr mode std_dev variance 
-			    count sum);
+        my @stat_types = qw(mean trm_mean min q1 median q3 max iqr mode std_dev variance
+                            count sum);
 
-	for my $stat_type (@stat_types) {
-		print "$stat_type\t";
-		for my $file (sort {$$stats{$a}{order} <=> $$stats{$b}{order}}
-			      keys %$stats) {
-			print defined ($$stats{$file}{$stat_type}) ?
-			    $$stats{$file}{$stat_type} . "\t" :
-			    "N/A\t";
-		}
-		print "\n";
-	}
+        for my $stat_type (@stat_types) {
+                print "$stat_type\t";
+                for my $file (sort {$$stats{$a}{order} <=> $$stats{$b}{order}}
+                              keys %$stats) {
+                        print defined ($$stats{$file}{$stat_type}) ?
+                            $$stats{$file}{$stat_type} . "\t" :
+                            "N/A\t";
+                }
+                print "\n";
+        }
+}
+#-----------------------------------------------------------------------------
+sub print_some_stats {
+        my ($stats, $fields) = @_;
+
+        my ($first_stats) = sort {(${$stats}{$a}{order} <=>
+                                   ${$stats}{$b}{order})}
+          keys %{$stats};
+        my @values;
+        for my $stat_type (@{$fields}) {
+                push @values, (defined $first_stats->{$stat_type} ?
+                               $first_stats->{$stat_type}         :
+                               'N/A');
+        }
+        print join "\t", @values;
+        print "\n";
 }
