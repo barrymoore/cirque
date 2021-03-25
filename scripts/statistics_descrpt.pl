@@ -176,8 +176,8 @@ sub print_some_stats {
           keys %{$stats};
         my @values;
         for my $stat_type (@{$fields}) {
-                push @values, (defined $first_stats->{$stat_type} ?
-                               $first_stats->{$stat_type}         :
+                push @values, (defined $stats->{$first_stats}->{$stat_type} ?
+                               $stats->{$first_stats}->{$stat_type}         :
                                'N/A');
         }
         print join "\t", @values;
