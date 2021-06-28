@@ -1,3 +1,3 @@
 # cirque
 
-Tools for hacking text data
+A set of tools written in Perl for hacking text data.
