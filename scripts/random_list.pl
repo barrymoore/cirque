@@ -58,8 +58,8 @@ Options:
 
 my ($help, $permute, $pick, $uniq, $prob_emit);
 my $opt_success = GetOptions('help'          => \$help,
-			     'permute=i'     => \$permute,
-			     'pick=i'        => \$pick,
+			     'permute|m=i'   => \$permute,
+			     'pick|p=i'      => \$pick,
 			     'uniq|u'        => \$uniq,
 			     'prob_emit|e=s' => \$prob_emit,
 			      );
@@ -67,7 +67,7 @@ my $opt_success = GetOptions('help'          => \$help,
 die $usage if $help || ! $opt_success;
 
 my $file = shift;
-die "$usage\n\nFATAL : missing_required_file\n" unless $file;
+die "$usage\n\nFATAL : missing_required_file, use - as file for STDIN\n" unless $file;
 
 $permute ||= 1;
 
